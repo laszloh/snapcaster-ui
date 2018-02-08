@@ -1,0 +1,5 @@
+config BR2_PACKAGE_SNAPCASTER_UI
+	bool "snapcaster-ui"
+	depends on BR2_PACKAGE_SNAPCAST
+	help
+	  User interface driver for the snapcast audio player
