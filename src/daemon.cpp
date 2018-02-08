@@ -1,14 +1,20 @@
 /***
-    This file is part of snapcast
+    This file was originally part of snapcast
+    Modified to fit the snapcaster-ui project
+    
     Copyright (C) 2014-2017  Johannes Pohl
+    Copyright (C) 2018 Laszlo Hegedüs
+    
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+    
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+    
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ***/
@@ -25,10 +31,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <iostream>
-#include "common/snapException.h"
-#include "common/strCompat.h"
-#include "common/utils/file_utils.h"
-#include "common/utils.h"
+#include "utils/file_utils.h"
 
 
 Daemon::Daemon(const std::string& user, const std::string& group, const std::string& pidfile) :
@@ -38,7 +41,7 @@ Daemon::Daemon(const std::string& user, const std::string& group, const std::str
 	pidfile_(pidfile)
 {
 	if (pidfile.empty() || pidfile.find('/') == std::string::npos)
-		throw SnapException("invalid pid file \"" + pidfile + "\"");
+		throw std::invalid_argument("invalid pid file \"" + pidfile + "\"");
 }
 
 
@@ -59,7 +62,7 @@ void Daemon::daemonize()
 	if (pidFilehandle_ == -1 )
 	{
 		/// Couldn't open lock file
-		throw SnapException("Could not open PID lock file \"" + pidfile_ + "\"");
+		throw std::runtime_error("Could not open PID lock file \"" + pidfile_ + "\"");
 	}
 
 	uid_t user_uid = (uid_t)-1;
@@ -73,7 +76,7 @@ void Daemon::daemonize()
 	{
 		struct passwd *pwd = getpwnam(user_.c_str());
 		if (pwd == nullptr)
-			throw SnapException("no such user \"" + user_ + "\"");
+			throw std::invalid_argument("no such user \"" + user_ + "\"");
 		user_uid = pwd->pw_uid;
 		user_gid = pwd->pw_gid;
 		user_name = strdup(user_.c_str());
@@ -85,7 +88,7 @@ void Daemon::daemonize()
 	{
 		struct group *grp = getgrnam(group_.c_str());
 		if (grp == nullptr)
-			throw SnapException("no such group \"" + group_ + "\"");
+			throw std::invalid_argument("no such group \"" + group_ + "\"");
 		user_gid = grp->gr_gid;
 #ifdef FREEBSD
 		had_group = true;
@@ -95,12 +98,12 @@ void Daemon::daemonize()
 	if (chown(pidfile_.c_str(), user_uid, user_gid) == -1)
 	{
 		/// Couldn't open lock file
-		throw SnapException("Could not chown PID lock file \"" + pidfile_ + "\"");
+		throw std::runtime_error("Could not chown PID lock file \"" + pidfile_ + "\"");
 	}
 
 	/// set gid
 	if (user_gid != (gid_t)-1 && user_gid != getgid() && setgid(user_gid) == -1)
-		throw SnapException("Failed to set group " + cpt::to_string((int)user_gid));
+		throw std::runtime_error("Failed to set group " + std::to_string((int)user_gid));
 
 //#if defined(FREEBSD) && !defined(MACOS)
 //#ifdef FREEBSD
@@ -108,11 +111,11 @@ void Daemon::daemonize()
 	/// (must be done before we change our uid)
 	/// no need to set the new user's supplementary groups if we are already this user
 //	if (!had_group && user_uid != getuid() && initgroups(user_name, user_gid) == -1)
-//		throw SnapException("Failed to set supplementary groups of user \"" + user + "\"");
+//		throw std::runtime_error("Failed to set supplementary groups of user \"" + user + "\"");
 //#endif
 	/// set uid
 	if (user_uid != (uid_t)-1 && user_uid != getuid() && setuid(user_uid) == -1)
-		throw SnapException("Failed to set user " + user_);
+		throw std::runtime_error("Failed to set user " + user_);
 
 	/// Our process ID and Session ID
 	pid_t pid, sid;
@@ -148,7 +151,7 @@ void Daemon::daemonize()
 
 	/// Try to lock file
 	if (lockf(pidFilehandle_, F_TLOCK, 0) == -1)
-		throw SnapException("Could not lock PID lock file \"" + pidfile_ + "\"");
+		throw std::runtime_error("Could not lock PID lock file \"" + pidfile_ + "\"");
 
 	char str[10];
 	/// Get and format PID
@@ -156,7 +159,7 @@ void Daemon::daemonize()
 
 	/// write pid to lockfile
 	if (write(pidFilehandle_, str, strlen(str)) != (int)strlen(str))
-		throw SnapException("Could not write PID to lock file \"" + pidfile_ + "\"");
+		throw std::runtime_error("Could not write PID to lock file \"" + pidfile_ + "\"");
 
 	/// Close out the standard file descriptors
 	close(STDIN_FILENO);

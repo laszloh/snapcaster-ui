@@ -1,36 +1,44 @@
 /***
-    This file is part of snapcaster-ui
-	
+    This file was originally part of snapcast
+    Modified to fit the snapcaster-ui project
+    
     Copyright (C) 2014-2017  Johannes Pohl
-	Copyright (C) 2018  Laszlo Hegedüs
-	
+    Copyright (C) 2018 Laszlo Hegedüs
+    
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-	
+    
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-	
+    
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ***/
 
 #include <iostream>
+#include <csignal>
+#include <thread>
+#include <chrono>
 #include <sys/resource.h>
 
-#include "popl.hpp"
-#include "controller.hpp"
+#include "controller.h"
 #include "browseZeroConf/browsemDNS.h"
 
 #ifdef HAS_DAEMON
-#include "common/daemon.h"
+#include "daemon.h"
 #endif
+#include "popl.hpp"
+#include "aixlog.hpp"
+#include "utils/string_utils.h"
+#include "signalHandler.h"
 
 using namespace std;
 using namespace popl;
+using namespace snapcaster;
 
 volatile sig_atomic_t g_terminated = false;
 
@@ -47,8 +55,11 @@ int main (int argc, char **argv)
 		auto portValue = op.add<Value<size_t>>("p", "port", "server port", 1704);
 		auto rotaryValue = op.add<Value<string>>("r", "rotary", "path to rotary event device", "");
 		auto buttonValue = op.add<Value<string>>("b", "button", "path to button event device", "");
-		auto daemonOption = op.add<Implicit<int>>("d", "daemon", "daemonize, optional process priority [-20..19]", -3, &processPriority);
-		
+#ifdef HAS_DAEMON
+		auto daemonOption = op.add<Value<int>>("d", "daemon", "daemonize, optional process priority [-20..19]", -3);
+        auto userValue = op.add<Value<string>>("u", "user", "option to run under [user:group]", "");
+#endif
+        
 		try
 		{
 			op.parse(argc, argv);
@@ -114,6 +125,8 @@ int main (int argc, char **argv)
 			}
 			daemon.reset(new Daemon(user, group, pidFile));
 			daemon->daemonize();
+            
+            int processPriority = daemonOption->value();
 			if (processPriority < -20)
 				processPriority = -20;
 			else if (processPriority > 19)
@@ -124,15 +137,15 @@ int main (int argc, char **argv)
 		}
 #endif
 
-		std::unique_ptr<Controller> controller(new Controller(hostValue->value(), portValue->value(), 
+		std::unique_ptr<Controller> controller(new Controller(hostValue->value(), portValue->value(),
 											rotaryValue->value(), buttonValue->value()));
 		if (!g_terminated)
 		{
-			LOG(INFO) << "Latency: " << latency << "\n";
-			controller->start(pcmDevice, host, port, latency);
+			LOG(INFO) << "Booting up...\n";
+//			controller->start(pcmDevice, host, port, latency);
 			while(!g_terminated)
-				chronos::sleep(100);
-			controller->stop();
+				std::this_thread::sleep_for(std::chrono::seconds(1));
+//			controller->stop();
 		}
 	}
 	catch (const std::exception& e)

@@ -1,6 +1,8 @@
 set(UI_SOURCES
-    snapCasterUi.cpp
-    queue.cpp
+    snapcaster.cpp
+    controller.cpp
+    server-json-rpc.cpp
+    ui-handler.cpp
     daemon.cpp)
 
 set(UI_LIBRARIES 
@@ -9,6 +11,7 @@ set(UI_LIBRARIES
 
 set(UI_INCLUDE
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/externals/aixlog/include
 	${JSONRPCPP_INCLUDE_DIRS})
 
 # Avahi
@@ -19,7 +22,7 @@ list(APPEND UI_INCLUDE ${AVAHI_INCLUDE_DIRS})
 add_definitions(-DHAS_DAEMON)
 
 include_directories(${UI_INCLUDE})
-add_executable(snapclient ${UI_SOURCES})
-target_link_libraries(snapclient ${UI_LIBRARIES})
+add_executable(snapcaster-ui ${UI_SOURCES})
+target_link_libraries(snapcaster-ui ${UI_LIBRARIES})
 
-install(TARGETS snapcaster-ui COMPONENT snapcaster-ui DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(TARGETS snapcaster-ui COMPONENT snapcaster DESTINATION "${CMAKE_INSTALL_BINDIR}")

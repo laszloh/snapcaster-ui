@@ -1,3 +1,12 @@
+# Build directory
+build/
+bin/
+
+# Eclipse stuff
+.cproject
+.project
+.settings/
+
 # Prerequisites
 *.d
 
